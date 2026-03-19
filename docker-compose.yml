@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB:       footprint_db
+      POSTGRES_USER:     footprint
+      POSTGRES_PASSWORD: footprint
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U footprint -d footprint_db"]
+      interval: 5s
+      retries: 5
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://footprint:footprint@db:5432/footprint_db
+      SECRET_KEY:   super-secret-change-me
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - ./dashboard:/dashboard
+
+volumes:
+  pg_data:

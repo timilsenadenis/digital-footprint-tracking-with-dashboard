@@ -1,0 +1,64 @@
+
+.env
+*.env
+backend/.env
+.env.local
+.env.production
+
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+
+# ─────────────────────────────────────────
+#  Docker
+# ─────────────────────────────────────────
+pgdata/
+postgres_data/
+docker-volumes/
+
+# ─────────────────────────────────────────
+#  VS Code
+# ─────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ─────────────────────────────────────────
+#  Logs
+# ─────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+

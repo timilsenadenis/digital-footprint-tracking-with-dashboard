@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Footprint Tracker</title>
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --primary: #4f46e5;
+      --primary-light: #eef2ff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --radius: 12px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+           background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── Sidebar ───────────────────────── */
+    nav {
+      position: fixed; top: 0; left: 0; width: 220px; height: 100vh;
+      background: var(--card); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; padding: 24px 16px; gap: 4px;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-size: 15px; font-weight: 700; color: var(--primary);
+      padding: 0 8px 20px; border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .nav-item {
+      padding: 9px 12px; border-radius: 8px;
+      cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 500;
+      display: flex; align-items: center; gap: 8px; transition: all .15s;
+      border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover, .nav-item.active {
+      background: var(--primary-light); color: var(--primary);
+    }
+
+    /* ── Main layout ───────────────────── */
+    main { margin-left: 220px; padding: 28px 32px; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    h2 { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+
+    /* ── Stat cards ────────────────────── */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--card); border-radius: var(--radius);
+      padding: 20px; border: 1px solid var(--border);
+    }
+    .stat-card .label { font-size: 12px; color: var(--muted); font-weight: 500;
+                        text-transform: uppercase; letter-spacing: .04em; }
+    .stat-card .value { font-size: 28px; font-weight: 700; color: var(--primary);
+                        margin: 6px 0 2px; }
+    .stat-card .sub   { font-size: 12px; color: var(--muted); }
+
+    /* ── Chart cards ───────────────────── */
+    .charts-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 24px;
+    }
+    .chart-card {
+      background: var(--card); border-radius: var(--radius);
+      padding: 20px; border: 1px solid var(--border);
+    }
+    .chart-card.full { grid-column: 1 / -1; }
+    .chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+    /* ── Table ─────────────────────────── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; padding: 8px 12px;
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    /* ── Range picker ──────────────────── */
+    .toolbar {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+    }
+    .range-btn {
+      padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--card); font-size: 13px; cursor: pointer; font-weight: 500;
+    }
+    .range-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* ── Auth overlay ──────────────────── */
+    #auth-overlay {
+      position: fixed; inset: 0; background: rgba(17,24,39,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+    }
+    .auth-card {
+      background: white; border-radius: 16px; padding: 36px 40px;
+      width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    }
+    .auth-card h2 { font-size: 22px; margin-bottom: 6px; }
+    .auth-card p  { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+    .auth-field   { margin-bottom: 14px; }
+    .auth-field label { display: block; font-size: 12px; font-weight: 600;
+                        color: var(--muted); margin-bottom: 5px; }
+    .auth-field input {
+      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 13px; outline: none;
+    }
+    .auth-field input:focus { border-color: var(--primary); }
+    .auth-submit {
+      width: 100%; padding: 10px; background: var(--primary); color: white;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 6px;
+    }
+    .auth-toggle { text-align: center; margin-top: 14px; font-size: 13px; color: var(--muted); }
+    .auth-toggle a { color: var(--primary); cursor: pointer; }
+    #auth-error { color: #ef4444; font-size: 12px; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<!-- Auth overlay -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <h2>Welcome back</h2>
+    <p>Sign in to view your digital footprint</p>
+    <div class="auth-field">
+      <label>EMAIL</label>
+      <input type="email" id="auth-email" placeholder="you@example.com">
+    </div>
+    <div class="auth-field">
+      <label>PASSWORD</label>
+      <input type="password" id="auth-password" placeholder="••••••••">
+    </div>
+    <button class="auth-submit" id="auth-btn">Sign in</button>
+    <p id="auth-error"></p>
+    <p class="auth-toggle">
+      No account? <a id="switch-mode">Register</a>
+    </p>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<nav>
+  <div class="nav-brand">🔍 Footprint</div>
+  <button class="nav-item active" data-page="overview">📊 Overview</button>
+  <button class="nav-item" data-page="websites">🌐 Websites</button>
+  <button class="nav-item" data-page="searches">🔎 Searches</button>
+  <button class="nav-item" data-page="social">💬 Social media</button>
+  <button class="nav-item" data-page="heatmap">🗓 Activity map</button>
+</nav>
+
+<!-- Main content -->
+<main>
+
+  <!-- Overview page -->
+  <div class="page active" id="page-overview">
+    <h2>Overview</h2>
+    <div class="toolbar">
+      <button class="range-btn active" data-days="7">7 days</button>
+      <button class="range-btn" data-days="14">14 days</button>
+      <button class="range-btn" data-days="30">30 days</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">Total visits</div>
+        <div class="value" id="ov-visits">—</div>
+        <div class="sub">pages loaded</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Time online</div>
+        <div class="value" id="ov-time">—</div>
+        <div class="sub">this period</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Unique sites</div>
+        <div class="value" id="ov-domains">—</div>
+        <div class="sub">domains visited</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Social time</div>
+        <div class="value" id="ov-social">—</div>
+        <div class="sub">social visits</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <h3>Daily activity</h3>
+        <div id="chart-daily" style="height:240px"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Category breakdown</h3>
+        <div id="chart-categories" style="height:280px"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Top sites</h3>
+        <div id="chart-top-sites" style="height:280px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Websites page -->
+  <div class="page" id="page-websites">
+    <h2>Websites</h2>
+    <div class="chart-card">
+      <h3>Top domains this week</h3>
+      <table id="tbl-domains">
+        <thead><tr><th>#</th><th>Domain</th><th>Category</th><th>Visits</th><th>Time</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Searches page -->
+  <div class="page" id="page-searches">
+    <h2>Search history</h2>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Top keywords</h3>
+        <div id="chart-keywords" style="height:320px"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Search engine usage</h3>
+        <div id="chart-engines" style="height:320px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Social page -->
+  <div class="page" id="page-social">
+    <h2>Social media activity</h2>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Time per platform</h3>
+        <div id="chart-social-time" style="height:300px"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Actions breakdown</h3>
+        <div id="chart-social-actions" style="height:300px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap page -->
+  <div class="page" id="page-heatmap">
+    <h2>Activity heatmap</h2>
+    <div class="chart-card full">
+      <h3>Visits by day &amp; hour</h3>
+      <div id="chart-heatmap" style="height:360px"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ─── State ───────────────────────────────────────────────────────────────────
+let TOKEN = localStorage.getItem("fp_token");
+let AUTH_MODE = "login";
+const API = "/api";
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+async function apiPost(path, body, auth = false) {
+  const headers = { "Content-Type": "application/json" };
+  if (auth) headers["Authorization"] = `Bearer ${TOKEN}`;
+  const res = await fetch(API + path, { method: "POST", headers, body: JSON.stringify(body) });
+  return res.json();
+}
+async function apiGet(path) {
+  const res = await fetch(API + path, {
+    headers: { "Authorization": `Bearer ${TOKEN}` }
+  });
+  return res.json();
+}
+
+document.getElementById("auth-btn").addEventListener("click", async () => {
+  const email    = document.getElementById("auth-email").value;
+  const password = document.getElementById("auth-password").value;
+  const errEl    = document.getElementById("auth-error");
+  const path     = AUTH_MODE === "login" ? "/login" : "/register";
+  try {
+    const data = await apiPost(path, { email, password, username: email.split("@")[0] });
+    if (data.token || data.api_key) {
+      TOKEN = data.token;
+      if (TOKEN) localStorage.setItem("fp_token", TOKEN);
+      document.getElementById("auth-overlay").style.display = "none";
+      loadAll();
+    } else {
+      errEl.textContent = data.error || "Failed";
+    }
+  } catch { errEl.textContent = "Server error"; }
+});
+
+document.getElementById("switch-mode").addEventListener("click", () => {
+  AUTH_MODE = AUTH_MODE === "login" ? "register" : "login";
+  document.getElementById("auth-btn").textContent = AUTH_MODE === "login" ? "Sign in" : "Register";
+  document.querySelector(".auth-card h2").textContent = AUTH_MODE === "login" ? "Welcome back" : "Create account";
+  document.querySelector(".auth-toggle a").textContent = AUTH_MODE === "login" ? "Register" : "Sign in";
+});
+
+if (TOKEN) {
+  document.getElementById("auth-overlay").style.display = "none";
+}
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+document.querySelectorAll(".nav-item").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("page-" + btn.dataset.page).classList.add("active");
+  });
+});
+
+// ─── Plotly helpers ───────────────────────────────────────────────────────────
+const layout = (extra = {}) => ({
+  margin: { t: 10, r: 10, b: 40, l: 50 },
+  paper_bgcolor: "rgba(0,0,0,0)",
+  plot_bgcolor:  "rgba(0,0,0,0)",
+  font: { family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", size: 12 },
+  showlegend: false,
+  ...extra,
+});
+const cfg = { displayModeBar: false, responsive: true };
+
+function fmtTime(sec) {
+  if (!sec) return "0m";
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h ? `${h}h ${m}m` : `${m}m`;
+}
+
+// ─── Load all data ────────────────────────────────────────────────────────────
+let currentDays = 7;
+
+async function loadAll() {
+  loadSummary(currentDays);
+  loadTopDomains();
+  loadCategories();
+  loadKeywords();
+  loadSocial();
+  loadHeatmap();
+}
+
+async function loadSummary(days) {
+  const rows = await apiGet(`/analytics/summary?days=${days}`);
+  if (!Array.isArray(rows) || !rows.length) return;
+
+  const totalVisits  = rows.reduce((a, r) => a + (r.total_visits || 0), 0);
+  const totalTimeSec = rows.reduce((a, r) => a + (r.total_time_sec || 0), 0);
+  const totalDomains = rows.reduce((a, r) => a + (r.unique_domains || 0), 0);
+  const socialVisits = rows.reduce((a, r) => a + (r.social_visits || 0), 0);
+
+  document.getElementById("ov-visits").textContent  = totalVisits;
+  document.getElementById("ov-time").textContent    = fmtTime(totalTimeSec);
+  document.getElementById("ov-domains").textContent = totalDomains;
+  document.getElementById("ov-social").textContent  = socialVisits;
+
+  // Daily bar chart
+  Plotly.newPlot("chart-daily", [{
+    type: "bar", x: rows.map(r => r.day),
+    y: rows.map(r => r.total_visits || 0),
+    marker: { color: "#4f46e5", opacity: 0.85 },
+    name: "Visits",
+  }, {
+    type: "scatter", x: rows.map(r => r.day),
+    y: rows.map(r => Math.round((r.total_time_sec || 0) / 60)),
+    mode: "lines+markers", yaxis: "y2",
+    line: { color: "#10b981", width: 2 },
+    marker: { size: 5 }, name: "Minutes online",
+  }], layout({
+    yaxis:  { title: "Visits", gridcolor: "#f3f4f6" },
+    yaxis2: { title: "Minutes", overlaying: "y", side: "right", gridcolor: "#f3f4f6" },
+    showlegend: true, legend: { x: 0, y: 1.1, orientation: "h" },
+    bargap: 0.3,
+  }), cfg);
+}
+
+async function loadCategories() {
+  const rows = await apiGet("/analytics/categories");
+  if (!Array.isArray(rows) || !rows.length) return;
+  Plotly.newPlot("chart-categories", [{
+    type: "pie",
+    labels: rows.map(r => r.name || "Other"),
+    values: rows.map(r => r.visits),
+    marker: { colors: rows.map(r => r.color_hex || "#888") },
+    hole: 0.42,
+    textinfo: "label+percent",
+    textfont: { size: 11 },
+  }], layout({ showlegend: false, margin: { t: 10, r: 10, b: 10, l: 10 } }), cfg);
+}
+
+async function loadTopDomains() {
+  const rows = await apiGet("/analytics/top-domains?limit=10");
+  if (!Array.isArray(rows)) return;
+
+  // Table
+  const tbody = document.querySelector("#tbl-domains tbody");
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr>
+      <td style="color:#9ca3af">${i + 1}</td>
+      <td><strong>${r.domain}</strong></td>
+      <td><span class="badge" style="background:${r.color_hex}22;color:${r.color_hex}">${r.category || "Other"}</span></td>
+      <td>${r.visits}</td>
+      <td>${fmtTime(r.total_sec)}</td>
+    </tr>
+  `).join("");
+
+  // Horizontal bar
+  Plotly.newPlot("chart-top-sites", [{
+    type: "bar", orientation: "h",
+    y: rows.map(r => r.domain).reverse(),
+    x: rows.map(r => r.visits).reverse(),
+    marker: { color: "#4f46e5", opacity: 0.8 },
+  }], layout({ margin: { t: 10, r: 20, b: 30, l: 120 },
+                xaxis: { gridcolor: "#f3f4f6" } }), cfg);
+}
+
+async function loadKeywords() {
+  const rows = await apiGet("/analytics/searches");
+  if (!Array.isArray(rows) || !rows.length) return;
+  const top = rows.slice(0, 20);
+  Plotly.newPlot("chart-keywords", [{
+    type: "bar", orientation: "h",
+    y: top.map(r => r.keyword).reverse(),
+    x: top.map(r => r.frequency).reverse(),
+    marker: { color: "#10b981" },
+  }], layout({ margin: { t: 10, r: 20, b: 30, l: 100 },
+                xaxis: { gridcolor: "#f3f4f6" } }), cfg);
+}
+
+async function loadSocial() {
+  const rows = await apiGet("/analytics/social");
+  if (!Array.isArray(rows) || !rows.length) return;
+
+  Plotly.newPlot("chart-social-time", [{
+    type: "bar",
+    x: rows.map(r => r.platform),
+    y: rows.map(r => Math.round((r.total_sec || 0) / 60)),
+    marker: { color: "#4f46e5" },
+  }], layout({ yaxis: { title: "Minutes", gridcolor: "#f3f4f6" } }), cfg);
+
+  Plotly.newPlot("chart-social-actions", [{
+    type: "bar", name: "Posts",
+    x: rows.map(r => r.platform), y: rows.map(r => r.posts || 0),
+    marker: { color: "#4f46e5" },
+  }, {
+    type: "bar", name: "Likes",
+    x: rows.map(r => r.platform), y: rows.map(r => r.likes || 0),
+    marker: { color: "#10b981" },
+  }, {
+    type: "bar", name: "Scrolls",
+    x: rows.map(r => r.platform), y: rows.map(r => r.scrolls || 0),
+    marker: { color: "#f59e0b" },
+  }], layout({
+    barmode: "group", showlegend: true,
+    legend: { x: 0, y: 1.1, orientation: "h" },
+    yaxis: { gridcolor: "#f3f4f6" },
+  }), cfg);
+}
+
+async function loadHeatmap() {
+  const rows = await apiGet("/analytics/heatmap");
+  if (!Array.isArray(rows) || !rows.length) return;
+
+  const days  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const hours = Array.from({length: 24}, (_, i) => `${i}:00`);
+  const z     = Array.from({length: 7}, () => new Array(24).fill(0));
+
+  rows.forEach(r => {
+    if (r.day_of_week >= 0 && r.day_of_week < 7 && r.hour_of_day >= 0 && r.hour_of_day < 24) {
+      z[r.day_of_week][r.hour_of_day] = r.visit_count || 0;
+    }
+  });
+
+  Plotly.newPlot("chart-heatmap", [{
+    type: "heatmap",
+    z, x: hours, y: days,
+    colorscale: [[0,"#eef2ff"],[0.5,"#6366f1"],[1,"#312e81"]],
+    showscale: true,
+  }], layout({
+    margin: { t: 10, r: 80, b: 60, l: 50 },
+    xaxis: { tickangle: -45 },
+  }), cfg);
+}
+
+// ─── Range buttons ────────────────────────────────────────────────────────────
+document.querySelectorAll(".range-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".range-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentDays = parseInt(btn.dataset.days);
+    loadSummary(currentDays);
+  });
+});
+
+// ─── Initial load ─────────────────────────────────────────────────────────────
+if (TOKEN) loadAll();
+</script>
+</body>
+</html>

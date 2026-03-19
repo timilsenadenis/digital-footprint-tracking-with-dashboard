@@ -1,0 +1,43 @@
+{
+  "manifest_version": 3,
+  "name": "Digital Footprint Tracker",
+  "version": "1.0.0",
+  "description": "Track your digital footprint — visits, searches, social activity, and app usage.",
+  "permissions": [
+    "tabs",
+    "activeTab",
+    "storage",
+    "webNavigation",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16":  "icons/icon16.png",
+      "48":  "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://www.instagram.com/*",
+        "https://twitter.com/*",
+        "https://x.com/*",
+        "https://www.linkedin.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.reddit.com/*"
+      ],
+      "js": ["content_social.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
