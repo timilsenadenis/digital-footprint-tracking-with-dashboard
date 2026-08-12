@@ -224,20 +224,6 @@ trg_visits_deduplicate     → prevents duplicate visits within 3s
 | Visualization | Plotly.js |
 | Containerization | Docker + Docker Compose |
 
----
-
-## ⚙️ Environment Variables
-
-Create `backend/.env`:
-```env
-DATABASE_URL=postgresql://footprint:footprint@db:5432/footprint_db
-SECRET_KEY=your-secret-key-here
-FLASK_ENV=development
-FLASK_DEBUG=1
-```
-
----
-
 ## 👨‍💻 Author
 
 **Denis Timilsena**
